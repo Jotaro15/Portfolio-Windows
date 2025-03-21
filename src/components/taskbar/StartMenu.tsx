@@ -4,7 +4,6 @@ import { UserHeader } from './start-menu/UserHeader';
 import { MenuContent } from './start-menu/MenuContent';
 import { BottomActions } from './start-menu/BottomActions';
 
-// Changed to default export for lazy loading
 const StartMenu = () => {
   return (
     <SheetContent side="bottom" className="h-[70vh] p-0 w-[400px] left-0 rounded-t-lg" hideClose>
