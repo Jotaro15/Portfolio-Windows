@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Window } from './Window';
 import { TaskBar } from './TaskBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
+
+const GRID_SIZE = 50;
 
 interface WindowState {
   id: number;
@@ -22,6 +24,8 @@ interface DesktopIconProps {
   onDragEnd: (position: IconPosition) => void;
 }
 
+const snapToGrid = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
+
 const DesktopIcon = ({ title, iconUrl, position, onDragEnd }: DesktopIconProps) => {
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -37,16 +41,14 @@ const DesktopIcon = ({ title, iconUrl, position, onDragEnd }: DesktopIconProps) 
   const handleMouseMove = (e: MouseEvent) => {
     if (!dragging) return;
     onDragEnd({
-      x: e.clientX - dragOffset.x,
-      y: e.clientY - dragOffset.y,
+      x: snapToGrid(e.clientX - dragOffset.x),
+      y: snapToGrid(e.clientY - dragOffset.y),
     });
   };
 
-  const handleMouseUp = () => {
-    setDragging(false);
-  };
+  const handleMouseUp = () => setDragging(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (dragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
@@ -105,9 +107,7 @@ export const Desktop = () => {
     setWindows(windows.filter(w => w.id !== id));
   };
 
-  const closeAllWindows = () => {
-    setWindows([]);
-  };
+  const closeAllWindows = () => setWindows([]);
 
   const handleIconDrag = (title: string, newPosition: IconPosition) => {
     setIconPositions((prev) => ({
@@ -117,65 +117,23 @@ export const Desktop = () => {
   };
 
   const desktopIcons = [
-    { 
-      title: 'My Documents',
-      iconUrl: '/assets/Folder.png'
-    },
-    { 
-      title: 'Notepad',
-      iconUrl: '/assets/Notes.png'
-    },
-    { 
-      title: 'My Briefcase',
-      iconUrl: '/assets/BriefCase.png'
-    },
-    { 
-      title: 'My Pictures',
-      iconUrl: '/assets/Pictures.png'
-    },
-    { 
-      title: 'My Videos',
-      iconUrl: '/assets/Videos.png'
-    }
+    { title: 'My Documents', iconUrl: '/assets/Folder.png' },
+    { title: 'Notepad', iconUrl: '/assets/Notes.png' },
+    { title: 'My Briefcase', iconUrl: '/assets/BriefCase.png' },
+    { title: 'My Pictures', iconUrl: '/assets/Pictures.png' },
+    { title: 'My Videos', iconUrl: '/assets/Videos.png' },
   ];
 
-  const renderWindowContent = (title: string) => {
-    if (title === 'Notepad') {
-      return (
-        <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="w-full bg-vista-window border-b border-vista-border">
-            <TabsTrigger value="personal" className="data-[state=active]:bg-white">Personal Notes</TabsTrigger>
-            <TabsTrigger value="work" className="data-[state=active]:bg-white">Work Notes</TabsTrigger>
-            <TabsTrigger value="ideas" className="data-[state=active]:bg-white">Ideas</TabsTrigger>
-          </TabsList>
-          <TabsContent value="personal" className="mt-2">
-            <Textarea 
-              placeholder="Write your personal notes here..."
-              className="min-h-[300px] bg-white resize-none font-tahoma"
-            />
-          </TabsContent>
-          <TabsContent value="work" className="mt-2">
-            <Textarea 
-              placeholder="Write your work-related notes here..."
-              className="min-h-[300px] bg-white resize-none font-tahoma"
-            />
-          </TabsContent>
-          <TabsContent value="ideas" className="mt-2">
-            <Textarea 
-              placeholder="Write your ideas here..."
-              className="min-h-[300px] bg-white resize-none font-tahoma"
-            />
-          </TabsContent>
-        </Tabs>
-      );
+  useEffect(() => {
+    const savedPositions = localStorage.getItem('desktop-icon-positions');
+    if (savedPositions) {
+      setIconPositions(JSON.parse(savedPositions));
     }
-    return (
-      <div className="p-4">
-        <h2 className="text-lg font-semibold mb-4">{title}</h2>
-        <p className="text-gray-600">Content for {title}</p>
-      </div>
-    );
-  };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('desktop-icon-positions', JSON.stringify(iconPositions));
+  }, [iconPositions]);
 
   return (
     <div className="min-h-screen bg-[url('/assets/Background_Windows.png')] bg-cover bg-center p-4">
@@ -196,10 +154,13 @@ export const Desktop = () => {
           onClose={() => closeWindow(window.id)}
           initialPosition={window.position}
         >
-          {renderWindowContent(window.title)}
+          <div className="p-4">
+            <h2 className="text-lg font-semibold mb-4">{window.title}</h2>
+            <p className="text-gray-600">Content for {window.title}</p>
+          </div>
         </Window>
       ))}
-      
+
       <TaskBar onCloseAllWindows={closeAllWindows} />
     </div>
   );
