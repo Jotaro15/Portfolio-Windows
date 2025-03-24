@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Window } from './Window';
 import { TaskBar } from './TaskBar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Textarea } from './ui/textarea';
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from '@radix-ui/react-context-menu';
 
 const GRID_SIZE = 50;
 
@@ -22,11 +21,14 @@ interface DesktopIconProps {
   iconUrl: string;
   position: IconPosition;
   onDragEnd: (position: IconPosition) => void;
+  onOpen: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 }
 
 const snapToGrid = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
 
-const DesktopIcon = ({ title, iconUrl, position, onDragEnd }: DesktopIconProps) => {
+const DesktopIcon = ({ title, iconUrl, position, onDragEnd, onOpen, onRename, onDelete }: DesktopIconProps) => {
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
@@ -64,18 +66,35 @@ const DesktopIcon = ({ title, iconUrl, position, onDragEnd }: DesktopIconProps) 
   }, [dragging]);
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: position.x,
-        top: position.y,
-        cursor: dragging ? 'grabbing' : 'pointer',
-      }}
-      onMouseDown={handleMouseDown}
-    >
-      <img src={iconUrl} alt={title} className="w-12 h-12" />
-      <div className="text-center text-white">{title}</div>
-    </div>
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <div
+          style={{
+            position: 'absolute',
+            left: position.x,
+            top: position.y,
+            cursor: dragging ? 'grabbing' : 'pointer',
+          }}
+          onMouseDown={handleMouseDown}
+        >
+          <img src={iconUrl} alt={title} className="w-12 h-12" />
+          <div className="text-center text-white">{title}</div>
+        </div>
+      </ContextMenuTrigger>
+
+      {/* ✅ Menu contextuel */}
+      <ContextMenuContent className="bg-gray-700 text-white shadow-lg rounded-md py-2">
+        <ContextMenuItem onClick={onOpen} className="px-4 py-2 hover:bg-gray-600 cursor-pointer">
+          🖥️ Ouvrir
+        </ContextMenuItem>
+        <ContextMenuItem onClick={onRename} className="px-4 py-2 hover:bg-gray-600 cursor-pointer">
+          ✏️ Renommer
+        </ContextMenuItem>
+        <ContextMenuItem onClick={onDelete} className="px-4 py-2 hover:bg-red-600 cursor-pointer">
+          🗑️ Supprimer
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
 
@@ -116,13 +135,26 @@ export const Desktop = () => {
     }));
   };
 
-  const desktopIcons = [
-    { title: 'My Documents', iconUrl: '/assets/Folder.png' },
-    { title: 'Notepad', iconUrl: '/assets/Notes.png' },
-    { title: 'My Briefcase', iconUrl: '/assets/BriefCase.png' },
-    { title: 'My Pictures', iconUrl: '/assets/Pictures.png' },
-    { title: 'My Videos', iconUrl: '/assets/Videos.png' },
-  ];
+  const handleIconRename = (title: string) => {
+    const newName = prompt(`Renommer ${title} :`, title);
+    if (newName && newName !== title) {
+      setIconPositions((prev) => {
+        const updatedPositions = { ...prev, [newName]: prev[title] };
+        delete updatedPositions[title];
+        return updatedPositions;
+      });
+    }
+  };
+
+  const handleIconDelete = (title: string) => {
+    if (confirm(`Supprimer ${title} ?`)) {
+      setIconPositions((prev) => {
+        const updatedPositions = { ...prev };
+        delete updatedPositions[title];
+        return updatedPositions;
+      });
+    }
+  };
 
   useEffect(() => {
     const savedPositions = localStorage.getItem('desktop-icon-positions');
@@ -135,6 +167,14 @@ export const Desktop = () => {
     localStorage.setItem('desktop-icon-positions', JSON.stringify(iconPositions));
   }, [iconPositions]);
 
+  const desktopIcons = [
+    { title: 'My Documents', iconUrl: '/assets/Folder.png' },
+    { title: 'Notepad', iconUrl: '/assets/Notes.png' },
+    { title: 'My Briefcase', iconUrl: '/assets/BriefCase.png' },
+    { title: 'My Pictures', iconUrl: '/assets/Pictures.png' },
+    { title: 'My Videos', iconUrl: '/assets/Videos.png' },
+  ];
+
   return (
     <div className="min-h-screen bg-[url('/assets/Background_Windows.png')] bg-cover bg-center p-4">
       {desktopIcons.map((icon) => (
@@ -144,21 +184,10 @@ export const Desktop = () => {
           iconUrl={icon.iconUrl}
           position={iconPositions[icon.title]}
           onDragEnd={(newPosition) => handleIconDrag(icon.title, newPosition)}
+          onOpen={() => openWindow(icon.title)}
+          onRename={() => handleIconRename(icon.title)}
+          onDelete={() => handleIconDelete(icon.title)}
         />
-      ))}
-
-      {windows.map((window) => (
-        <Window
-          key={window.id}
-          title={window.title}
-          onClose={() => closeWindow(window.id)}
-          initialPosition={window.position}
-        >
-          <div className="p-4">
-            <h2 className="text-lg font-semibold mb-4">{window.title}</h2>
-            <p className="text-gray-600">Content for {window.title}</p>
-          </div>
-        </Window>
       ))}
 
       <TaskBar onCloseAllWindows={closeAllWindows} />
