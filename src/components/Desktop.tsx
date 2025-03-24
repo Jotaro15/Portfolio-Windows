@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Window } from './Window';
-import { TaskBar } from './TaskBar';
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from '@radix-ui/react-context-menu';
 
 const GRID_SIZE = 50;
-
-interface WindowState {
-  id: number;
-  title: string;
-  position: { x: number; y: number };
-}
 
 interface IconPosition {
   x: number;
@@ -66,40 +57,24 @@ const DesktopIcon = ({ title, iconUrl, position, onDragEnd, onOpen, onRename, on
   }, [dragging]);
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger>
-        <div
-          style={{
-            position: 'absolute',
-            left: position.x,
-            top: position.y,
-            cursor: dragging ? 'grabbing' : 'pointer',
-          }}
-          onMouseDown={handleMouseDown}
-        >
-          <img src={iconUrl} alt={title} className="w-12 h-12" />
-          <div className="text-center text-white">{title}</div>
-        </div>
-      </ContextMenuTrigger>
-
-      {/* ✅ Menu contextuel */}
-      <ContextMenuContent className="bg-gray-700 text-white shadow-lg rounded-md py-2">
-        <ContextMenuItem onClick={onOpen} className="px-4 py-2 hover:bg-gray-600 cursor-pointer">
-          🖥️ Ouvrir
-        </ContextMenuItem>
-        <ContextMenuItem onClick={onRename} className="px-4 py-2 hover:bg-gray-600 cursor-pointer">
-          ✏️ Renommer
-        </ContextMenuItem>
-        <ContextMenuItem onClick={onDelete} className="px-4 py-2 hover:bg-red-600 cursor-pointer">
-          🗑️ Supprimer
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+    <div
+      style={{
+        position: 'absolute',
+        left: position.x,
+        top: position.y,
+        cursor: dragging ? 'grabbing' : 'pointer',
+      }}
+      onMouseDown={handleMouseDown}
+      onDoubleClick={onOpen}
+    >
+      <img src={iconUrl} alt={title} className="w-12 h-12" />
+      <div className="text-center text-white">{title}</div>
+    </div>
   );
 };
 
 export const Desktop = () => {
-  const [windows, setWindows] = useState<WindowState[]>([]);
+  const [windows, setWindows] = useState<{ id: number; title: string; position: IconPosition }[]>([]);
   const [nextId, setNextId] = useState(1);
   const [iconPositions, setIconPositions] = useState<Record<string, IconPosition>>({
     'My Documents': { x: 100, y: 100 },
@@ -113,17 +88,17 @@ export const Desktop = () => {
     const offset = (windows.length * 30) % 150;
     setWindows([
       ...windows,
-      { 
-        id: nextId, 
+      {
+        id: nextId,
         title,
-        position: { x: 100 + offset, y: 100 + offset }
+        position: { x: 100 + offset, y: 100 + offset },
       },
     ]);
     setNextId(nextId + 1);
   };
 
   const closeWindow = (id: number) => {
-    setWindows(windows.filter(w => w.id !== id));
+    setWindows(windows.filter((w) => w.id !== id));
   };
 
   const closeAllWindows = () => setWindows([]);
@@ -190,7 +165,25 @@ export const Desktop = () => {
         />
       ))}
 
-      <TaskBar onCloseAllWindows={closeAllWindows} />
+      {windows.map((window) => (
+        <div
+          key={window.id}
+          className="absolute border border-gray-300 bg-white shadow-lg"
+          style={{ left: window.position.x, top: window.position.y }}
+        >
+          <div className="flex justify-between bg-blue-600 text-white p-2">
+            <span>{window.title}</span>
+            <button onClick={() => closeWindow(window.id)}>❌</button>
+          </div>
+          <div className="p-4">
+            <p>Contenu de {window.title}</p>
+          </div>
+        </div>
+      ))}
+
+      <div className="fixed bottom-0 left-0 right-0 h-12 bg-gray-800 text-white flex justify-between items-center px-4">
+        <button onClick={closeAllWindows}>❌ Fermer tout</button>
+      </div>
     </div>
   );
 };
